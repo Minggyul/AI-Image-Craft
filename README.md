@@ -1,4 +1,4 @@
-# AI Image Generator
+# AI Image Craft
 
 AI 기반 이미지 생성 웹 애플리케이션입니다. OpenAI의 GPT-4를 사용하여 프롬프트를 개선하고, Stability AI를 통해 고품질 이미지를 생성합니다.
 
