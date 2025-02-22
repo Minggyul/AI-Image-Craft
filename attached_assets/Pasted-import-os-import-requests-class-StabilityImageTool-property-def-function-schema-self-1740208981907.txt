@@ -1,0 +1,55 @@
+import os
+import requests
+
+class StabilityImageTool:
+    @property
+    def function_schema(self) -> dict:
+        """
+        Open API의 function calling에 사용할 스키마를 정의합니다.
+        """
+        return {
+            "name": "generate_image",
+            "description": "Generate an image based on a text prompt description using Stable Diffusion 1.6 model.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "A detailed description of the image to be generated, e.g., 'a serene landscape with mountains at sunset'.",
+                    }
+                },
+                "required": ["prompt"],
+            },
+        }
+
+    def run(self, prompt: str) -> str:
+        """
+        SD 1.6 모델용 Stability API에 요청을 보내어 이미지를 생성합니다.
+        SD 1.6 모델의 파라미터를 모두 채운 예시입니다.
+        """
+        try:
+            api_key = os.getenv("STABILITY_API_KEY")
+            # SD 1.6 모델 엔드포인트 (실제 URL은 Stability AI 문서를 참고하여 수정하세요)
+            url = "https://api.stability.ai/v2/generation/stable-diffusion-1-6/text-to-image"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "text_prompts": [{"text": prompt}],
+                "cfg_scale": 7.0,                    # 이미지 생성의 창의성과 제어 정도
+                "clip_guidance_preset": "NONE",        # SD 1.6에서는 'NONE' 또는 문서에 따른 다른 프리셋 사용
+                "height": 512,                       # 생성할 이미지의 높이 (픽셀)
+                "width": 512,                        # 생성할 이미지의 너비 (픽셀)
+                "samples": 1,                        # 생성할 이미지 개수
+                "steps": 50,                         # 추론 단계 수 (높을수록 이미지 품질 향상 가능)
+                "seed": 12345                        # 재현성을 위한 시드 값 (원하는 경우 변경)
+            }
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            # API 응답 예시: artifacts 리스트에 base64 인코딩된 이미지가 포함되어 있다고 가정합니다.
+            image_base64 = data["artifacts"][0]["base64"]
+            return image_base64
+        except Exception as e:
+            return f"Error: {str(e)}"

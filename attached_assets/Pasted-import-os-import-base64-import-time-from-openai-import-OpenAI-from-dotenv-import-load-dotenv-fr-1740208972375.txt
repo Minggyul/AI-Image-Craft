@@ -1,0 +1,87 @@
+import os
+import base64
+import time
+from openai import OpenAI
+from dotenv import load_dotenv
+from tools.stability import StabilityImageTool
+
+load_dotenv()
+
+def save_image(image_base64: str) -> str:
+    """
+    base64 문자열을 디코딩하여 이미지 파일로 저장하고, 파일 경로를 반환합니다.
+    """
+    try:
+        image_data = base64.b64decode(image_base64)
+        filename = f"generated_{int(time.time())}.png"
+        with open(filename, "wb") as f:
+            f.write(image_data)
+        return filename
+    except Exception as e:
+        return f"Error saving image: {str(e)}"
+
+def main():
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    image_tool = StabilityImageTool()
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a creative assistant that generates images based on user descriptions.",
+        }
+    ]
+
+    print("Chat ready. Type your image description or 'exit' to quit.")
+    while True:
+        try:
+            user_input = input("You: ")
+            if user_input.lower() in ["exit", "quit"]:
+                break
+
+            messages.append({"role": "user", "content": user_input})
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                functions=[image_tool.function_schema],
+                function_call="auto",
+            )
+
+            response_message = response.choices[0].message
+            messages.append(response_message.model_dump())
+
+            if response_message.function_call:
+                function_name = response_message.function_call.name
+                if function_name == "generate_image":
+                    # Open API에서 생성한 함수 호출 인자에서 prompt를 추출합니다.
+                    prompt = eval(response_message.function_call.arguments)["prompt"]
+                    image_base64 = image_tool.run(prompt)
+                    
+                    # 함수 호출 결과 메시지에 base64 이미지 데이터를 추가합니다.
+                    messages.append({
+                        "role": "function",
+                        "name": function_name,
+                        "content": image_base64,
+                    })
+
+                    # Stability API로부터 받은 이미지를 드라이브(로컬 파일)로 저장합니다.
+                    file_path = save_image(image_base64)
+                    print(f"Assistant: Image generated and saved to {file_path}")
+
+                    second_response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=messages,
+                    )
+                    print(f"Assistant: {second_response.choices[0].message.content}")
+                else:
+                    print("Assistant: Sorry, I don't know how to do that.")
+            else:
+                print(f"Assistant: {response_message.content}")
+
+        except KeyboardInterrupt:
+            break
+
+    print("Goodbye!")
+
+if __name__ == "__main__":
+    main()

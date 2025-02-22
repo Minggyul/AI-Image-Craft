@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+dist
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Generated files
+public/images/
+server/public
+.DS_Store
+vite.config.ts.*
+*.tar.gz
+
+# Editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
